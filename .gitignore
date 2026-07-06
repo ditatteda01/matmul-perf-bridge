@@ -1,0 +1,38 @@
+# ===== macOS Specific =====
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# ===== IDE / Editor Specific =====
+.vscode/
+.idea/
+cmake-build-*/
+
+# ===== Packaing =====
+*.whl
+wheelhouse/
+
+# ===== C++ / Build Artifacts =====
+build/
+CMakeCache.txt
+CMakeFiles/
+CMakeSettings.json
+cmake_install.cmake
+Makefile
+*.a
+*.so
+*.dylib
+*.pyd
+
+# ===== Python Specific =====
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+env/
+ENV/
+dist/
+*.egg-info
+*.egg-info/
