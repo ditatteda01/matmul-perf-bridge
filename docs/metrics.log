@@ -1,0 +1,149 @@
+2026-07-21 19:10:20,533 [INFO] CPP module import correctly
+2026-07-21 19:10:20,533 [INFO] Data Type: <class 'numpy.float64'>
+2026-07-21 19:10:20,533 [INFO] Warm up algorithms...
+2026-07-21 19:10:20,610 [INFO] Done.
+2026-07-21 19:10:20,610 [INFO] Start matrix multiplication: C = A x B
+2026-07-21 19:10:20,610 [INFO] ========== Epoch 0 ==========
+2026-07-21 19:10:20,610 [INFO] Dimensions: A(50, 30) x B(30, 10)
+2026-07-21 19:10:20,610 [INFO] Method: Numpy matmul | Status: Running 5-times...
+2026-07-21 19:10:20,611 [INFO] Done. Matrix C(50, 10). Duration: 0.000002s
+2026-07-21 19:10:20,611 [INFO] ------------------------------
+2026-07-21 19:10:20,611 [INFO] Method: Python for-loop | Status: Running 5-times...
+2026-07-21 19:10:20,638 [INFO] Done. Duration: 0.005478s
+2026-07-21 19:10:20,639 [INFO] Result Check: True
+2026-07-21 19:10:20,639 [INFO] ------------------------------
+2026-07-21 19:10:20,639 [INFO] Method: CPP row-major vector | Status: Running 5-times...
+2026-07-21 19:10:20,640 [INFO] Done. Duration: Total(0.000186s) | CPP Alg(0.121333ms)
+2026-07-21 19:10:20,640 [INFO] Result Check: True
+2026-07-21 19:10:20,640 [INFO] ------------------------------
+2026-07-21 19:10:20,640 [INFO] Method: CPP column-major pointer | Status: Running 5-times...
+2026-07-21 19:10:20,640 [INFO] Done. Duration: Total(0.000067s) | CPP Alg(0.056834ms)
+2026-07-21 19:10:20,640 [INFO] Result Check: True
+2026-07-21 19:10:20,640 [INFO] ------------------------------
+2026-07-21 19:10:20,640 [INFO] Method: CPP row-major pointer | Status: Running 5-times...
+2026-07-21 19:10:20,641 [INFO] Done. Duration: Total(0.000049s) | CPP Alg(0.038458ms)
+2026-07-21 19:10:20,641 [INFO] Result Check: True
+2026-07-21 19:10:20,641 [INFO] ------------------------------
+2026-07-21 19:10:20,641 [INFO] ========== Epoch 1 ==========
+2026-07-21 19:10:20,641 [INFO] Dimensions: A(100, 60) x B(60, 20)
+2026-07-21 19:10:20,641 [INFO] Method: Numpy matmul | Status: Running 5-times...
+2026-07-21 19:10:20,641 [INFO] Done. Matrix C(100, 20). Duration: 0.000005s
+2026-07-21 19:10:20,641 [INFO] ------------------------------
+2026-07-21 19:10:20,641 [INFO] Method: Python for-loop | Status: Running 5-times...
+2026-07-21 19:10:20,844 [INFO] Done. Duration: 0.040482s
+2026-07-21 19:10:20,844 [INFO] Result Check: True
+2026-07-21 19:10:20,844 [INFO] ------------------------------
+2026-07-21 19:10:20,844 [INFO] Method: CPP row-major vector | Status: Running 5-times...
+2026-07-21 19:10:20,849 [INFO] Done. Duration: Total(0.000899s) | CPP Alg(0.727000ms)
+2026-07-21 19:10:20,849 [INFO] Result Check: True
+2026-07-21 19:10:20,849 [INFO] ------------------------------
+2026-07-21 19:10:20,849 [INFO] Method: CPP column-major pointer | Status: Running 5-times...
+2026-07-21 19:10:20,851 [INFO] Done. Duration: Total(0.000490s) | CPP Alg(0.471916ms)
+2026-07-21 19:10:20,852 [INFO] Result Check: True
+2026-07-21 19:10:20,852 [INFO] ------------------------------
+2026-07-21 19:10:20,852 [INFO] Method: CPP row-major pointer | Status: Running 5-times...
+2026-07-21 19:10:20,853 [INFO] Done. Duration: Total(0.000295s) | CPP Alg(0.284375ms)
+2026-07-21 19:10:20,853 [INFO] Result Check: True
+2026-07-21 19:10:20,853 [INFO] ------------------------------
+2026-07-21 19:10:20,853 [INFO] ========== Epoch 2 ==========
+2026-07-21 19:10:20,854 [INFO] Dimensions: A(200, 120) x B(120, 40)
+2026-07-21 19:10:20,854 [INFO] Method: Numpy matmul | Status: Running 5-times...
+2026-07-21 19:10:20,854 [INFO] Done. Matrix C(200, 40). Duration: 0.000018s
+2026-07-21 19:10:20,854 [INFO] ------------------------------
+2026-07-21 19:10:20,854 [INFO] Method: Python for-loop | Status: Running 5-times...
+2026-07-21 19:10:22,499 [INFO] Done. Duration: 0.330597s
+2026-07-21 19:10:22,499 [INFO] Result Check: True
+2026-07-21 19:10:22,499 [INFO] ------------------------------
+2026-07-21 19:10:22,499 [INFO] Method: CPP row-major vector | Status: Running 5-times...
+2026-07-21 19:10:22,530 [INFO] Done. Duration: Total(0.006079s) | CPP Alg(5.497500ms)
+2026-07-21 19:10:22,530 [INFO] Result Check: True
+2026-07-21 19:10:22,530 [INFO] ------------------------------
+2026-07-21 19:10:22,530 [INFO] Method: CPP column-major pointer | Status: Running 5-times...
+2026-07-21 19:10:22,547 [INFO] Done. Duration: Total(0.003266s) | CPP Alg(3.255959ms)
+2026-07-21 19:10:22,547 [INFO] Result Check: True
+2026-07-21 19:10:22,547 [INFO] ------------------------------
+2026-07-21 19:10:22,547 [INFO] Method: CPP row-major pointer | Status: Running 5-times...
+2026-07-21 19:10:22,558 [INFO] Done. Duration: Total(0.002193s) | CPP Alg(2.173167ms)
+2026-07-21 19:10:22,558 [INFO] Result Check: True
+2026-07-21 19:10:22,558 [INFO] ------------------------------
+2026-07-21 19:10:22,558 [INFO] ========== Epoch 3 ==========
+2026-07-21 19:10:22,559 [INFO] Dimensions: A(400, 240) x B(240, 80)
+2026-07-21 19:10:22,559 [INFO] Method: Numpy matmul | Status: Running 5-times...
+2026-07-21 19:10:22,559 [INFO] Done. Matrix C(400, 80). Duration: 0.000071s
+2026-07-21 19:10:22,559 [INFO] ------------------------------
+2026-07-21 19:10:22,559 [INFO] Method: Python for-loop | Status: Running 5-times...
+2026-07-21 19:10:35,599 [INFO] Done. Duration: 2.600493s
+2026-07-21 19:10:35,599 [INFO] Result Check: True
+2026-07-21 19:10:35,599 [INFO] ------------------------------
+2026-07-21 19:10:35,599 [INFO] Method: CPP row-major vector | Status: Running 5-times...
+2026-07-21 19:10:35,817 [INFO] Done. Duration: Total(0.043420s) | CPP Alg(41.391375ms)
+2026-07-21 19:10:35,818 [INFO] Result Check: True
+2026-07-21 19:10:35,818 [INFO] ------------------------------
+2026-07-21 19:10:35,818 [INFO] Method: CPP column-major pointer | Status: Running 5-times...
+2026-07-21 19:10:35,951 [INFO] Done. Duration: Total(0.026481s) | CPP Alg(26.461250ms)
+2026-07-21 19:10:35,951 [INFO] Result Check: True
+2026-07-21 19:10:35,951 [INFO] ------------------------------
+2026-07-21 19:10:35,951 [INFO] Method: CPP row-major pointer | Status: Running 5-times...
+2026-07-21 19:10:36,039 [INFO] Done. Duration: Total(0.017624s) | CPP Alg(17.597750ms)
+2026-07-21 19:10:36,040 [INFO] Result Check: True
+2026-07-21 19:10:36,040 [INFO] ------------------------------
+2026-07-21 19:10:36,040 [INFO] ========== Epoch 4 ==========
+2026-07-21 19:10:36,042 [INFO] Dimensions: A(800, 480) x B(480, 160)
+2026-07-21 19:10:36,042 [INFO] Method: Numpy matmul | Status: Running 5-times...
+2026-07-21 19:10:36,044 [INFO] Done. Matrix C(800, 160). Duration: 0.000429s
+2026-07-21 19:10:36,044 [INFO] ------------------------------
+2026-07-21 19:10:36,044 [INFO] Method: Python for-loop | Status: Running 5-times...
+2026-07-21 19:12:22,038 [INFO] Done. Duration: 21.129925s
+2026-07-21 19:12:22,043 [INFO] Result Check: True
+2026-07-21 19:12:22,043 [INFO] ------------------------------
+2026-07-21 19:12:22,043 [INFO] Method: CPP row-major vector | Status: Running 5-times...
+2026-07-21 19:12:23,723 [INFO] Done. Duration: Total(0.334980s) | CPP Alg(326.605416ms)
+2026-07-21 19:12:23,727 [INFO] Result Check: True
+2026-07-21 19:12:23,727 [INFO] ------------------------------
+2026-07-21 19:12:23,727 [INFO] Method: CPP column-major pointer | Status: Running 5-times...
+2026-07-21 19:12:24,808 [INFO] Done. Duration: Total(0.216006s) | CPP Alg(215.971875ms)
+2026-07-21 19:12:24,808 [INFO] Result Check: True
+2026-07-21 19:12:24,808 [INFO] ------------------------------
+2026-07-21 19:12:24,808 [INFO] Method: CPP row-major pointer | Status: Running 5-times...
+2026-07-21 19:12:25,537 [INFO] Done. Duration: Total(0.145302s) | CPP Alg(145.272542ms)
+2026-07-21 19:12:25,537 [INFO] Result Check: True
+2026-07-21 19:12:25,537 [INFO] ------------------------------
+2026-07-21 19:12:25,537 [INFO] ========== Epoch 5 ==========
+2026-07-21 19:12:25,547 [INFO] Dimensions: A(1600, 960) x B(960, 320)
+2026-07-21 19:12:25,547 [INFO] Method: Numpy matmul | Status: Running 5-times...
+2026-07-21 19:12:25,568 [INFO] Done. Matrix C(1600, 320). Duration: 0.003652s
+2026-07-21 19:12:25,568 [INFO] ------------------------------
+2026-07-21 19:12:25,568 [INFO] Method: Python for-loop | Status: Skipped (Matrix too large).
+2026-07-21 19:12:25,568 [INFO] ------------------------------
+2026-07-21 19:12:25,568 [INFO] Method: CPP row-major vector | Status: Running 5-times...
+2026-07-21 19:12:38,693 [INFO] Done. Duration: Total(2.621090s) | CPP Alg(2588.662583ms)
+2026-07-21 19:12:38,706 [INFO] Result Check: True
+2026-07-21 19:12:38,706 [INFO] ------------------------------
+2026-07-21 19:12:38,706 [INFO] Method: CPP column-major pointer | Status: Running 5-times...
+2026-07-21 19:12:47,408 [INFO] Done. Duration: Total(1.739055s) | CPP Alg(1738.990083ms)
+2026-07-21 19:12:47,410 [INFO] Result Check: True
+2026-07-21 19:12:47,410 [INFO] ------------------------------
+2026-07-21 19:12:47,410 [INFO] Method: CPP row-major pointer | Status: Running 5-times...
+2026-07-21 19:12:53,150 [INFO] Done. Duration: Total(1.147437s) | CPP Alg(1147.376209ms)
+2026-07-21 19:12:53,152 [INFO] Result Check: True
+2026-07-21 19:12:53,152 [INFO] ------------------------------
+2026-07-21 19:12:53,152 [INFO] ========== Epoch 6 ==========
+2026-07-21 19:12:53,189 [INFO] Dimensions: A(3200, 1920) x B(1920, 640)
+2026-07-21 19:12:53,189 [INFO] Method: Numpy matmul | Status: Running 5-times...
+2026-07-21 19:12:53,346 [INFO] Done. Matrix C(3200, 640). Duration: 0.030825s
+2026-07-21 19:12:53,347 [INFO] ------------------------------
+2026-07-21 19:12:53,347 [INFO] Method: Python for-loop | Status: Skipped (Matrix too large).
+2026-07-21 19:12:53,347 [INFO] ------------------------------
+2026-07-21 19:12:53,347 [INFO] Method: CPP row-major vector | Status: Running 5-times...
+2026-07-21 19:14:37,860 [INFO] Done. Duration: Total(20.849647s) | CPP Alg(20699.644500ms)
+2026-07-21 19:14:37,923 [INFO] Result Check: True
+2026-07-21 19:14:37,924 [INFO] ------------------------------
+2026-07-21 19:14:37,924 [INFO] Method: CPP column-major pointer | Status: Running 5-times...
+2026-07-21 19:15:50,688 [INFO] Done. Duration: Total(14.545357s) | CPP Alg(14545.291417ms)
+2026-07-21 19:15:50,697 [INFO] Result Check: True
+2026-07-21 19:15:50,697 [INFO] ------------------------------
+2026-07-21 19:15:50,697 [INFO] Method: CPP row-major pointer | Status: Running 5-times...
+2026-07-21 19:16:36,517 [INFO] Done. Duration: Total(9.163219s) | CPP Alg(9163.166833ms)
+2026-07-21 19:16:36,525 [INFO] Result Check: True
+2026-07-21 19:16:36,525 [INFO] ------------------------------
+2026-07-21 19:16:36,525 [INFO] Process terminated.
