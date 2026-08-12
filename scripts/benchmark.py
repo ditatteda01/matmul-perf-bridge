@@ -7,13 +7,13 @@ import logging
 from pathlib import Path
 
 
-DTYPE = np.float64
+DTYPE = np.float32  # int32 / float32
 REPETITION = 5      # Repeat algorithm whithin each epoch
-EPOCH = 7
+EPOCH = 8
 DIM_GROWTH_RATIO = 2
-MATRIX_DIM_P = 50   # Rows and columns of matrix multiplication:
-MATRIX_DIM_Q = 30   # C(p, r) = A(p, q) x B(q, r)
-MATRIX_DIM_R = 10
+MATRIX_DIM_M = 50   # Rows and columns of matrix multiplication:
+MATRIX_DIM_K = 30   # C(M, N) = A(M, K) x B(K, N)
+MATRIX_DIM_N = 40
 
 
 def set_logger(log_dir: str, log_name: str):
@@ -47,15 +47,15 @@ def check_matmul_result(mat_gt: np.ndarray, mat_test: np.ndarray) -> bool:
     Returns:
         True when the test matrix equals ground truth matrix.
     """
-    return np.allclose(mat_gt, mat_test, 0)
+    return np.allclose(mat_gt, mat_test, rtol=1e-5, atol=1e-6)
 
-def mk_matrices(p: int, q: int, r: int, dtype: type) -> tuple[np.ndarray, np.ndarray]:
+def mk_matrices(M: int, K: int, N: int, dtype: type) -> tuple[np.ndarray, np.ndarray]:
     """Create and return ndarray matrices.
     
     Args:
-        p: Rows of A.
-        q: Columns of A and rows of B.
-        r: Columns of B.
+        M: Rows of A.
+        K: Columns of A and rows of B.
+        N: Columns of B.
         dtype: Data type of matrix.
 
     Returns:
@@ -63,22 +63,28 @@ def mk_matrices(p: int, q: int, r: int, dtype: type) -> tuple[np.ndarray, np.nda
     """
     rng = np.random.default_rng()
     if DTYPE == np.int32:
-        A = rng.integers(-10, 10, size=(p, q), dtype=dtype)
-        B = rng.integers(-10, 10, size=(q, r), dtype=dtype)
-    elif DTYPE == np.float64:
-        A = rng.random(size=(p, q), dtype=dtype)
-        B = rng.random(size=(q, r), dtype=dtype)
+        A = rng.integers(-10, 10, size=(M, K), dtype=dtype)
+        B = rng.integers(-10, 10, size=(K, N), dtype=dtype)
+
+    elif DTYPE == np.float32:
+        A = rng.random(size=(M, K), dtype=dtype)
+        B = rng.random(size=(K, N), dtype=dtype)
+
+    else:
+        print(f"CRITICLE: Non supported data type (only int32/float32 available)", file=sys.stderr)
+        sys.exit(1)
+
     return A, B
 
-def matmul_python_loop(mat_pq: np.ndarray, mat_qr: np.ndarray) -> None:
-    p, q = mat_pq.shape
-    r = mat_qr.shape[1]
-    mat_pr = np.zeros((p, r))
-    for i in range(p):
-        for j in range(r):
-            for k in range(q):
-                mat_pr[i][j] += mat_pq[i][k] * mat_qr[k][j]
-    return mat_pr
+def matmul_python_loop(mat_mk: np.ndarray, mat_kn: np.ndarray) -> None:
+    M, K = mat_mk.shape
+    N = mat_kn.shape[1]
+    mat_mn = np.zeros((M, N), dtype=mat_mk.dtype)
+    for i in range(M):
+        for j in range(N):
+            for k in range(K):
+                mat_mn[i][j] += mat_mk[i][k] * mat_kn[k][j]
+    return mat_mn
 
 def warm_up(mthd: callable, A: np.ndarray, B: np.ndarray) -> np.ndarray:
     """A warm-up call for matrix multiplication methods.
@@ -153,10 +159,11 @@ if __name__ == "__main__":
             (mmcpp.matmul_rMajor_vector, "CPP row-major vector"),
             (mmcpp.matmul_cMajor_ptr, "CPP column-major pointer"),
             (mmcpp.matmul_rMajor_ptr, "CPP row-major pointer"),
+            (mmcpp.gemm_f32_kernel4x16, "CPP gemm single-thread pointer"),
             # TODO: add optimization methods
         ]
 
-        A, B = mk_matrices(MATRIX_DIM_P, MATRIX_DIM_Q, MATRIX_DIM_R, DTYPE)
+        A, B = mk_matrices(MATRIX_DIM_M, MATRIX_DIM_K, MATRIX_DIM_N, DTYPE)
         for fnc, _ in ALGORITHMS:
             warm_up(fnc, A, B)
 
@@ -164,24 +171,24 @@ if __name__ == "__main__":
         logger.info("Start matrix multiplication: C = A x B")
 
         for epoch in range(EPOCH):
-            logger.info(f"========== Epoch {epoch} ==========")
+            logger.info(f"====================== Epoch {epoch} ======================")
 
-            p = MATRIX_DIM_P * DIM_GROWTH_RATIO**(epoch)
-            q = MATRIX_DIM_Q * DIM_GROWTH_RATIO**(epoch)
-            r = MATRIX_DIM_R * DIM_GROWTH_RATIO**(epoch)
+            M = MATRIX_DIM_M * DIM_GROWTH_RATIO**(epoch)
+            K = MATRIX_DIM_K * DIM_GROWTH_RATIO**(epoch)
+            N = MATRIX_DIM_N * DIM_GROWTH_RATIO**(epoch)
 
-            A, B = mk_matrices(p, q, r, DTYPE)
+            A, B = mk_matrices(M, K, N, DTYPE)
             logger.info(f"Dimensions: A{A.shape} x B{B.shape}")
 
             for mthd, name in ALGORITHMS:
                 if name.startswith("Numpy"):
-                    logger.info(f"Method: {name} | Status: Running {REPETITION}-times...")
+                    logger.info(f"Method: {name} | Status: Running...")
                     GroundTruth, total_s = rep_alg(mthd, name, A, B, REPETITION)
                     logger.info(f"Done. Matrix C{GroundTruth.shape}. Duration: {total_s:.6f}s")
 
                 elif name.startswith("Python"):
-                    if (p * q * r < 100000000):
-                        logger.info(f"Method: {name} | Status: Running {REPETITION}-times...")
+                    if (M * K * N < 100000000):
+                        logger.info(f"Method: {name} | Status: Running...")
                         C_python_loop, total_s = rep_alg(mthd, name, A, B, REPETITION)
                         logger.info(f"Done. Duration: {total_s:.6f}s")
                         logger.info(f"Result Check: {check_matmul_result(GroundTruth, C_python_loop)}")
@@ -189,14 +196,17 @@ if __name__ == "__main__":
                         logger.info(f"Method: {name} | Status: Skipped (Matrix too large).")
 
                 elif name.startswith("CPP"):
-                    logger.info(f"Method: {name} | Status: Running {REPETITION}-times...")
-                    C_cpp_xx, total_s, alg_ms = rep_alg(mthd, name, A, B, REPETITION)
-                    logger.info(f"Done. Duration: Total({total_s:.6f}s) | CPP Alg({alg_ms:.6f}ms)")
-                    logger.info(f"Result Check: {check_matmul_result(GroundTruth, C_cpp_xx)}")
+                    if name.find("column") > -1 and M * K * N >= 10000000000:
+                        logger.info(f"Method: {name} | Status: Skipped (Matrix too large).")
+                    else:
+                        logger.info(f"Method: {name} | Status: Running...")
+                        C_cpp_xx, total_s, alg_ms = rep_alg(mthd, name, A, B, REPETITION)
+                        logger.info(f"Done. Duration: Total({total_s:.6f}s) | CPP Alg({alg_ms:.6f}ms)")
+                        logger.info(f"Result Check: {check_matmul_result(GroundTruth, C_cpp_xx)}")
                 
-                logger.info("-"*30)
+                logger.info("-"*54)
 
-        logger.info("Process terminated.")
+        logger.info("Benchmark Complete.")
 
     except ImportError as e:
         logger.critical(f"Import CPP module error: {e}")

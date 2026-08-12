@@ -27,4 +27,9 @@ pybind11_add_module(matmul_cpp
     src/matmul.cpp
 )
 
+target_compile_options(matmul_cpp
+    PRIVATE
+        -O3
+)
+
 install(TARGETS matmul_cpp DESTINATION .)

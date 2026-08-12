@@ -26,9 +26,9 @@ std::pair<double, std::vector< std::vector<T> > > matmul_rMajor_vector_wrapper(
         throw std::runtime_error("Failed to normalize input array buffers to contiguous block.");
     }
 
-    size_t p = valid_A.shape(0);
-    size_t q = valid_A.shape(1);
-    size_t r = valid_B.shape(1);
+    size_t M = valid_A.shape(0);
+    size_t K = valid_A.shape(1);
+    size_t N = valid_B.shape(1);
 
     py::buffer_info bufA = valid_A.request();
     py::buffer_info bufB = valid_B.request();
@@ -43,19 +43,19 @@ std::pair<double, std::vector< std::vector<T> > > matmul_rMajor_vector_wrapper(
     // pointer-based ones.
     auto start = std::chrono::high_resolution_clock::now();
 
-    std::vector< std::vector<T> > A_vec(p, std::vector<T>(q));
-    for (size_t i = 0; i < p; i++) {
-        std::copy(A_ptr + i * q, A_ptr + (i + 1) * q, A_vec[i].begin());
+    std::vector< std::vector<T> > A_vec(M, std::vector<T>(K));
+    for (size_t i = 0; i < M; i++) {
+        std::copy(A_ptr + i * K, A_ptr + (i + 1) * K, A_vec[i].begin());
     }
 
-    std::vector< std::vector<T> > B_vec(q, std::vector<T>(r));
-    for (size_t k = 0; k < q; k++) {
-        std::copy(B_ptr + k * r, B_ptr + (k + 1) * r, B_vec[k].begin());
+    std::vector< std::vector<T> > B_vec(K, std::vector<T>(N));
+    for (size_t k = 0; k < K; k++) {
+        std::copy(B_ptr + k * N, B_ptr + (k + 1) * N, B_vec[k].begin());
     }
 
-    std::vector< std::vector<T> > C(p, std::vector<T>(r));
+    std::vector< std::vector<T> > C(M, std::vector<T>(N));
 
-    matmul::matmul_rMajor_vector<T>(A_vec, B_vec, C, p, q, r);
+    matmul::matmul_rMajor_vector<T>(A_vec, B_vec, C, M, K, N);
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> alg_elapsed = end - start;
@@ -73,7 +73,7 @@ If using 'new' instead, pass a py::capsule base to prevent memory leaks by
 transferring ownership to Python:
 
 ```cpp
-    T* C = new T[p * r]{};
+    T* C = new T[M * N]{};
     py::capsule gc_callback(
         C,
         [](void* ptr) {
@@ -106,9 +106,9 @@ std::pair<double, py::array_t<T> > matmul_cMajor_ptr_wrapper(
         throw std::runtime_error("Failed to normalize input array buffers to contiguous block.");
     }
 
-    size_t p = valid_A.shape(0);
-    size_t q = valid_A.shape(1);
-    size_t r = valid_B.shape(1);
+    size_t M = valid_A.shape(0);
+    size_t K = valid_A.shape(1);
+    size_t N = valid_B.shape(1);
 
     py::buffer_info bufA = valid_A.request();
     py::buffer_info bufB = valid_B.request();
@@ -118,17 +118,17 @@ std::pair<double, py::array_t<T> > matmul_cMajor_ptr_wrapper(
 
     // Timer starts here because allocating C and zero-filling it IS part of
     // the cost this method is meant to measure — it's the pointer-method
-    // equivalent of the vector wrapper's C(p, vector<T>(r)) allocation.
+    // equivalent of the vector wrapper's C(M, vector<T>(N)) allocation.
     // Keeping both methods' "build C" step inside their respective timers
     // ensures neither is unfairly credited for doing that work "for free."
     auto start = std::chrono::high_resolution_clock::now();
 
-    py::array_t<T> C({p, r});
+    py::array_t<T> C({M, N});
     py::buffer_info bufC = C.request();
     T* C_ptr = static_cast<T*>(bufC.ptr);
-    std::fill(C_ptr, C_ptr + (p * r), T{0});
+    std::fill(C_ptr, C_ptr + (M * N), T{0});
 
-    matmul::matmul_cMajor_ptr<T>(A_ptr, B_ptr, C_ptr, p, q, r);
+    matmul::matmul_cMajor_ptr<T>(A_ptr, B_ptr, C_ptr, M, K, N);
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> alg_elapsed = end - start;
@@ -159,9 +159,9 @@ std::pair<double, py::array_t<T> > matmul_rMajor_ptr_wrapper(
         throw std::runtime_error("Failed to normalize input array buffers to contiguous block.");
     }
 
-    size_t p = valid_A.shape(0);
-    size_t q = valid_A.shape(1);
-    size_t r = valid_B.shape(1);
+    size_t M = valid_A.shape(0);
+    size_t K = valid_A.shape(1);
+    size_t N = valid_B.shape(1);
 
     py::buffer_info bufA = valid_A.request();
     py::buffer_info bufB = valid_B.request();
@@ -171,17 +171,62 @@ std::pair<double, py::array_t<T> > matmul_rMajor_ptr_wrapper(
 
     // Timer starts here because allocating C and zero-filling it IS part of
     // the cost this method is meant to measure — it's the pointer-method
-    // equivalent of the vector wrapper's C(p, vector<T>(r)) allocation.
+    // equivalent of the vector wrapper's C(M, vector<T>(N)) allocation.
     // Keeping both methods' "build C" step inside their respective timers
     // ensures neither is unfairly credited for doing that work "for free."
     auto start = std::chrono::high_resolution_clock::now();
 
-    py::array_t<T> C({p, r});
+    py::array_t<T> C({M, N});
     py::buffer_info bufC = C.request();
     T* C_ptr = static_cast<T*>(bufC.ptr);
-    std::fill(C_ptr, C_ptr + (p * r), T{0});
+    std::fill(C_ptr, C_ptr + (M * N), T{0});
 
-    matmul::matmul_rMajor_ptr<T>(A_ptr, B_ptr, C_ptr, p, q, r);
+    matmul::matmul_rMajor_ptr<T>(A_ptr, B_ptr, C_ptr, M, K, N);
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> alg_elapsed = end - start;
+
+    return {alg_elapsed.count(), C};
+}
+
+std::pair<double, py::array_t<float32_t> > gemm_f32_kernel4x16_wrapper(
+    const py::array_t<float32_t> A,
+    const py::array_t<float32_t> B
+) {
+    if (A.ndim() != 2 || B.ndim() != 2) {
+        throw std::invalid_argument("Input arrays must be 2-dimensional.");
+    }
+    if (A.shape(1) != B.shape(0)) {
+        throw std::invalid_argument("Matrix inner dimensions dismatched. (A columns must equal B rows)");
+    }
+
+    auto valid_A = py::array_t<float32_t, py::array::c_style>::ensure(A);
+    auto valid_B = py::array_t<float32_t, py::array::c_style>::ensure(B);
+    if (!valid_A || !valid_B) {
+        throw std::runtime_error("Failed to normalize input array buffers to contiguous block.");
+    }
+
+    size_t M = valid_A.shape(0);
+    size_t K = valid_A.shape(1);
+    size_t N = valid_B.shape(1);
+
+    py::buffer_info bufA = valid_A.request();
+    py::buffer_info bufB = valid_B.request();
+
+    float32_t* A_ptr = static_cast<float32_t*>(bufA.ptr);
+    float32_t* B_ptr = static_cast<float32_t*>(bufB.ptr);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    py::array_t<float32_t> C({M, N});
+    py::buffer_info bufC = C.request();
+    float32_t* C_ptr = static_cast<float32_t*>(bufC.ptr);
+    std::fill(C_ptr, C_ptr + (M * N), 0.0f);
+    
+    gemm_f32_kernel4x16::gemm_single_thread(
+        A_ptr, B_ptr, C_ptr,
+        M, N, K
+    );
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> alg_elapsed = end - start;
@@ -194,12 +239,14 @@ PYBIND11_MODULE(matmul_cpp, m) {
     m.def("greet", &env_test::greet, "A simple greeting function.", py::arg("name") = "World");
 
     m.def("matmul_rMajor_vector", &matmul_rMajor_vector_wrapper<int32_t>, "Int32 matrix multiplication function.");
-    m.def("matmul_rMajor_vector", &matmul_rMajor_vector_wrapper<double>, "Float64 matrix multiplication function.");
+    m.def("matmul_rMajor_vector", &matmul_rMajor_vector_wrapper<float32_t>, "Float32 matrix multiplication function.");
 
     m.def("matmul_cMajor_ptr", &matmul_cMajor_ptr_wrapper<int32_t>, "Int32 matrix multiplication function.");
-    m.def("matmul_cMajor_ptr", &matmul_cMajor_ptr_wrapper<double>, "Float64 matrix multiplication function.");
+    m.def("matmul_cMajor_ptr", &matmul_cMajor_ptr_wrapper<float32_t>, "Float32 matrix multiplication function.");
 
     m.def("matmul_rMajor_ptr", &matmul_rMajor_ptr_wrapper<int32_t>, "Int32 matrix multiplication function.");
-    m.def("matmul_rMajor_ptr", &matmul_rMajor_ptr_wrapper<double>, "Float64 matrix multiplication function.");
+    m.def("matmul_rMajor_ptr", &matmul_rMajor_ptr_wrapper<float32_t>, "Float32 matrix multiplication function.");
+
+    m.def("gemm_f32_kernel4x16", &gemm_f32_kernel4x16_wrapper, "Float32 single thread gemm function.");
 
 }
