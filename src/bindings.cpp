@@ -1,9 +1,236 @@
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+#include <pybind11/numpy.h>
+#include <chrono>
 #include "env_test.hpp"
+#include "matmul.hpp"
+#include "gemm.hpp"
 
 namespace py = pybind11;
+
+template <typename T>
+std::pair<double, std::vector< std::vector<T> > > matmul_rMajor_vector_wrapper(
+    const py::array_t<T> A,
+    const py::array_t<T> B
+) {
+    if (A.ndim() != 2 || B.ndim() != 2) {
+        throw std::invalid_argument("Input arrays must be 2-dimensional.");
+    }
+    if (A.shape(1) != B.shape(0)) {
+        throw std::invalid_argument("Matrix inner dimensions dismatched. (A columns must equal B rows)");
+    }
+
+    // Create a copy of input array if it's memory discontiguous or type nonparity.
+    auto valid_A = py::array_t<T, py::array::c_style>::ensure(A);
+    auto valid_B = py::array_t<T, py::array::c_style>::ensure(B);
+    if (!valid_A || !valid_B) {
+        throw std::runtime_error("Failed to normalize input array buffers to contiguous block.");
+    }
+
+    size_t M = valid_A.shape(0);
+    size_t K = valid_A.shape(1);
+    size_t N = valid_B.shape(1);
+
+    py::buffer_info bufA = valid_A.request();
+    py::buffer_info bufB = valid_B.request();
+
+    T* A_ptr = static_cast<T*>(bufA.ptr);
+    T* B_ptr = static_cast<T*>(bufB.ptr);
+
+    std::vector< std::vector<T> > A_vec(M, std::vector<T>(K));
+    for (size_t i = 0; i < M; i++) {
+        std::copy(A_ptr + i * K, A_ptr + (i + 1) * K, A_vec[i].begin());
+    }
+
+    std::vector< std::vector<T> > B_vec(K, std::vector<T>(N));
+    for (size_t k = 0; k < K; k++) {
+        std::copy(B_ptr + k * N, B_ptr + (k + 1) * N, B_vec[k].begin());
+    }
+
+    std::vector< std::vector<T> > C(M, std::vector<T>(N));
+
+    auto start = std::chrono::high_resolution_clock::now();
+    matmul::matmul_rMajor_vector<T>(A_vec, B_vec, C, M, K, N);
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double, std::milli> alg_elapsed = end - start;
+
+    return {alg_elapsed.count(), C};
+}
+
+/* INFO: py::array_t constructor vs. C++ origin new
+
+py::array_t constructs memory directly on the Python heap, leaving 'C' as 
+a lightweight stack handle. When returned, Python handles garbage collection 
+without manual memory management.
+
+If using 'new' instead, pass a py::capsule base to prevent memory leaks by 
+transferring ownership to Python:
+
+```cpp
+    T* C = new T[M * N]{};
+    py::capsule gc_callback(
+        C,
+        [](void* ptr) {
+            delete[] static_cast<T*>(ptr);
+        }
+    );
+    return py::array_t<T>(shape, strides, C, gc_callback);
+```
+*/
+template <typename T>
+std::pair<double, py::array_t<T> > matmul_cMajor_ptr_wrapper(
+    const py::array_t<T> A,
+    const py::array_t<T> B
+) {  
+    if (A.ndim() != 2 || B.ndim() != 2) {
+        throw std::invalid_argument("Input arrays must be 2-dimensional.");
+    }
+    if (A.shape(1) != B.shape(0)) {
+        throw std::invalid_argument("Matrix inner dimensions dismatched. (A columns must equal B rows)");
+    }
+
+    // ensure() on an already-contiguous, correctly-typed array is a no-op
+    // (just a refcount bump, no copy), so this step carries negligible cost
+    // for this method and is deliberately left outside the timer. This
+    // mirrors how the vector wrapper excludes its own no-cost setup (shape
+    // validation) but includes its real conversion cost.
+    auto valid_A = py::array_t<T, py::array::c_style>::ensure(A);
+    auto valid_B = py::array_t<T, py::array::c_style>::ensure(B);
+    if (!valid_A || !valid_B) {
+        throw std::runtime_error("Failed to normalize input array buffers to contiguous block.");
+    }
+
+    size_t M = valid_A.shape(0);
+    size_t K = valid_A.shape(1);
+    size_t N = valid_B.shape(1);
+
+    py::buffer_info bufA = valid_A.request();
+    py::buffer_info bufB = valid_B.request();
+
+    T* A_ptr = static_cast<T*>(bufA.ptr);
+    T* B_ptr = static_cast<T*>(bufB.ptr);
+
+    py::array_t<T> C({M, N});
+    py::buffer_info bufC = C.request();
+    T* C_ptr = static_cast<T*>(bufC.ptr);
+    std::fill(C_ptr, C_ptr + (M * N), T{0});
+
+    auto start = std::chrono::high_resolution_clock::now();
+    matmul::matmul_cMajor_ptr<T>(A_ptr, B_ptr, C_ptr, M, K, N);
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double, std::milli> alg_elapsed = end - start;
+
+    return {alg_elapsed.count(), C};
+}
+
+template <typename T>
+std::pair<double, py::array_t<T> > matmul_rMajor_ptr_wrapper(
+    const py::array_t<T> A,
+    const py::array_t<T> B
+) {
+    if (A.ndim() != 2 || B.ndim() != 2) {
+        throw std::invalid_argument("Input arrays must be 2-dimensional.");
+    }
+    if (A.shape(1) != B.shape(0)) {
+        throw std::invalid_argument("Matrix inner dimensions dismatched. (A columns must equal B rows)");
+    }
+
+    // ensure() on an already-contiguous, correctly-typed array is a no-op
+    // (just a refcount bump, no copy), so this step carries negligible cost
+    // for this method and is deliberately left outside the timer. This
+    // mirrors how the vector wrapper excludes its own no-cost setup (shape
+    // validation) but includes its real conversion cost.
+    auto valid_A = py::array_t<T, py::array::c_style>::ensure(A);
+    auto valid_B = py::array_t<T, py::array::c_style>::ensure(B);
+    if (!valid_A || !valid_B) {
+        throw std::runtime_error("Failed to normalize input array buffers to contiguous block.");
+    }
+
+    size_t M = valid_A.shape(0);
+    size_t K = valid_A.shape(1);
+    size_t N = valid_B.shape(1);
+
+    py::buffer_info bufA = valid_A.request();
+    py::buffer_info bufB = valid_B.request();
+
+    T* A_ptr = static_cast<T*>(bufA.ptr);
+    T* B_ptr = static_cast<T*>(bufB.ptr);
+
+    py::array_t<T> C({M, N});
+    py::buffer_info bufC = C.request();
+    T* C_ptr = static_cast<T*>(bufC.ptr);
+    std::fill(C_ptr, C_ptr + (M * N), T{0});
+
+    auto start = std::chrono::high_resolution_clock::now();
+    matmul::matmul_rMajor_ptr<T>(A_ptr, B_ptr, C_ptr, M, K, N);
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double, std::milli> alg_elapsed = end - start;
+
+    return {alg_elapsed.count(), C};
+}
+
+constexpr size_t MC = 16;
+constexpr size_t NC = 1024;
+constexpr size_t KC = 384;
+std::pair<double, py::array_t<float32_t> > gemm_f32_kernel4x16_wrapper(
+    const py::array_t<float32_t> A,
+    const py::array_t<float32_t> B
+) {
+    if (A.ndim() != 2 || B.ndim() != 2) {
+        throw std::invalid_argument("Input arrays must be 2-dimensional.");
+    }
+    if (A.shape(1) != B.shape(0)) {
+        throw std::invalid_argument("Matrix inner dimensions dismatched. (A columns must equal B rows)");
+    }
+
+    auto valid_A = py::array_t<float32_t, py::array::c_style>::ensure(A);
+    auto valid_B = py::array_t<float32_t, py::array::c_style>::ensure(B);
+    if (!valid_A || !valid_B) {
+        throw std::runtime_error("Failed to normalize input array buffers to contiguous block.");
+    }
+
+    size_t M = valid_A.shape(0);
+    size_t K = valid_A.shape(1);
+    size_t N = valid_B.shape(1);
+
+    py::buffer_info bufA = valid_A.request();
+    py::buffer_info bufB = valid_B.request();
+
+    float32_t* A_ptr = static_cast<float32_t*>(bufA.ptr);
+    float32_t* B_ptr = static_cast<float32_t*>(bufB.ptr);
+
+    py::array_t<float32_t> C({M, N});
+    py::buffer_info bufC = C.request();
+    float32_t* C_ptr = static_cast<float32_t*>(bufC.ptr);
+    std::fill(C_ptr, C_ptr + (M * N), 0.0f);
+    
+    thread_local Gemm gemm(MC, NC, KC);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    gemm(A_ptr, B_ptr, C_ptr, M, N, K); // gemm in main thread TLS
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double, std::milli> alg_elapsed = end - start;
+
+    return {alg_elapsed.count(), C};
+}
 
 PYBIND11_MODULE(matmul_cpp, m) {
     m.doc() = "Python bindings for the matmul-perf-bridge C++ module";
     m.def("greet", &env_test::greet, "A simple greeting function.", py::arg("name") = "World");
+
+    m.def("matmul_rMajor_vector", &matmul_rMajor_vector_wrapper<int32_t>, "Int32 matrix multiplication function.");
+    m.def("matmul_rMajor_vector", &matmul_rMajor_vector_wrapper<float32_t>, "Float32 matrix multiplication function.");
+
+    m.def("matmul_cMajor_ptr", &matmul_cMajor_ptr_wrapper<int32_t>, "Int32 matrix multiplication function.");
+    m.def("matmul_cMajor_ptr", &matmul_cMajor_ptr_wrapper<float32_t>, "Float32 matrix multiplication function.");
+
+    m.def("matmul_rMajor_ptr", &matmul_rMajor_ptr_wrapper<int32_t>, "Int32 matrix multiplication function.");
+    m.def("matmul_rMajor_ptr", &matmul_rMajor_ptr_wrapper<float32_t>, "Float32 matrix multiplication function.");
+
+    m.def("gemm_f32_kernel4x16", &gemm_f32_kernel4x16_wrapper, "Float32 single thread gemm function.");
+
 }

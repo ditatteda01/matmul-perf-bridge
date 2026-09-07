@@ -34,5 +34,6 @@ venv/
 env/
 ENV/
 dist/
+scripts/benchmark_test.py
 *.egg-info
 *.egg-info/
