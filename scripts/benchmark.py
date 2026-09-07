@@ -4,16 +4,17 @@ import traceback
 import numpy as np
 import time
 import logging
+import random
 from pathlib import Path
 
 
 DTYPE = np.float32  # int32 / float32
 REPETITION = 5      # Repeat algorithm whithin each epoch
-EPOCH = 8
-DIM_GROWTH_RATIO = 2
-MATRIX_DIM_M = 50   # Rows and columns of matrix multiplication:
-MATRIX_DIM_K = 30   # C(M, N) = A(M, K) x B(K, N)
-MATRIX_DIM_N = 40
+EPOCH = 7
+DIM_GROWTH_RATE = 2
+MATRIX_DIM_M = 100   # Rows and columns of matrix multiplication:
+MATRIX_DIM_K = 100   # C(M, N) = A(M, K) x B(K, N)
+MATRIX_DIM_N = 100
 
 
 def set_logger(log_dir: str, log_name: str):
@@ -49,19 +50,19 @@ def check_matmul_result(mat_gt: np.ndarray, mat_test: np.ndarray) -> bool:
     """
     return np.allclose(mat_gt, mat_test, rtol=1e-5, atol=1e-6)
 
-def mk_matrices(M: int, K: int, N: int, dtype: type) -> tuple[np.ndarray, np.ndarray]:
+def mk_matrices(rng: np.random.Generator, M: int, N: int, K: int, dtype: type) -> tuple[np.ndarray, np.ndarray]:
     """Create and return ndarray matrices.
     
     Args:
+        rng: random generator.
         M: Rows of A.
-        K: Columns of A and rows of B.
         N: Columns of B.
+        K: Columns of A and rows of B.
         dtype: Data type of matrix.
 
     Returns:
         (A, B).
     """
-    rng = np.random.default_rng()
     if DTYPE == np.int32:
         A = rng.integers(-10, 10, size=(M, K), dtype=dtype)
         B = rng.integers(-10, 10, size=(K, N), dtype=dtype)
@@ -87,49 +88,50 @@ def matmul_python_loop(mat_mk: np.ndarray, mat_kn: np.ndarray) -> None:
     return mat_mn
 
 def warm_up(mthd: callable, A: np.ndarray, B: np.ndarray) -> np.ndarray:
-    """A warm-up call for matrix multiplication methods.
-
-    Args:
-        mthd: The matrix multiplication method.
-        A: The left matrix of the multiplication.
-        B: The right matrix of the multiplication.
-
-    Returns:
-        The matrix of A x B.
-    """
     return mthd(A, B)
 
-def rep_alg(mthd: callable, mthdName: str, A: np.ndarray, B: np.ndarray, reps=5) -> tuple:
-    """Execute a matrix multiplication algorithm multiple times and return the median run.
+def time_alg(mthd: callable, mthdName: str, A: np.array, B: np.array) -> tuple:
+    """Time a matrix multiplication algorithm and return results.
     
     Args:
         mthd: Matrix multiplication method to benchmark.
         mthdName: Name of the method.
         A: Left operand matrix.
         B: Right operand matrix.
-        reps: Number of repeated executions.
     
     Returns:
         tuple:
-            - For Python methods: ``(result_matrix, wall_time_sec)``
+            - For Numpy, Python methods: ``(result_matrix, wall_time_sec)``
             - For C++ methods: ``(result_matrix, wall_time_sec, algorithm_time_ms)``
     """
-    perfs = []
-    for _ in range(reps):
-        if mthdName.startswith("CPP"):
-            st = time.perf_counter()
-            alg_ms, C = mthd(A, B)
-            ed = time.perf_counter()
-            perfs.append((C, ed - st, alg_ms))
-        else:
-            st = time.perf_counter()
-            C = mthd(A, B)
-            ed = time.perf_counter()
-            perfs.append((C, ed - st))
+    if mthdName.startswith("CPP"):
+        st = time.perf_counter()
+        alg_ms, C = mthd(A, B)
+        ed = time.perf_counter()
+        result = (C, ed - st, alg_ms)
+    else:
+        st = time.perf_counter()
+        C = mthd(A, B)
+        ed = time.perf_counter()
+        result = (C, ed - st)
+    return result
 
-    perfs.sort(key=lambda pair: pair[1])
-    return perfs[reps // 2]
+def get_median(records: list, tgt_idx: int) -> tuple | None:
+    """Return the median of the input on target index.
+    
+    Args:
+        records: List of tuples.
+        tgt_idx: Comparing index of the tuple.
+    
+    Returns:
+        The median element of the input. Or `None` if `None` is found inside the input.
+    """
+    if None in records:
+        return None
 
+    n = len(records)
+    records.sort(key=lambda x: x[tgt_idx])
+    return records[n//2]
 
 if __name__ == "__main__":
 
@@ -137,7 +139,7 @@ if __name__ == "__main__":
     sys.path.append(os.path.abspath("./build"))
 
     try:
-        logger = set_logger("./docs", "metrics")
+        logger = set_logger("./log", "metrics")
 
     except Exception as e:
         # write the error message to the terminal through stderr stream
@@ -147,11 +149,8 @@ if __name__ == "__main__":
 
     try:
         import matmul_cpp as mmcpp
-
         logger.info("CPP module import correctly")
-        logger.info(f"Data Type: {DTYPE}")
-
-        logger.info("Warm up algorithms...")
+        logger.info(f"{REPETITION} reps for each Algorithm and the median is selected.")
 
         ALGORITHMS = [
             (np.matmul, "Numpy matmul"),
@@ -159,51 +158,75 @@ if __name__ == "__main__":
             (mmcpp.matmul_rMajor_vector, "CPP row-major vector"),
             (mmcpp.matmul_cMajor_ptr, "CPP column-major pointer"),
             (mmcpp.matmul_rMajor_ptr, "CPP row-major pointer"),
-            (mmcpp.gemm_f32_kernel4x16, "CPP gemm single-thread pointer"),
-            # TODO: add optimization methods
+            (mmcpp.gemm_f32_kernel4x16, "CPP gemm pointer")
         ]
-
-        A, B = mk_matrices(MATRIX_DIM_M, MATRIX_DIM_K, MATRIX_DIM_N, DTYPE)
-        for fnc, _ in ALGORITHMS:
-            warm_up(fnc, A, B)
-
-        logger.info("Done.")
-        logger.info("Start matrix multiplication: C = A x B")
+        ALG_INDICES = [i for i in range(len(ALGORITHMS))]
+        hasWarmup = False
+        seed = 0
+        random.seed(seed)
+        rng = np.random.default_rng(seed=seed)
 
         for epoch in range(EPOCH):
             logger.info(f"====================== Epoch {epoch} ======================")
 
-            M = MATRIX_DIM_M * DIM_GROWTH_RATIO**(epoch)
-            K = MATRIX_DIM_K * DIM_GROWTH_RATIO**(epoch)
-            N = MATRIX_DIM_N * DIM_GROWTH_RATIO**(epoch)
+            M, N, K = map(
+                lambda x: x * (DIM_GROWTH_RATE**epoch),
+                [MATRIX_DIM_M, MATRIX_DIM_N, MATRIX_DIM_K]
+            )
+            A, B = mk_matrices(rng, M, N, K, DTYPE)
+            C = np.matmul(A, B)
+            logger.info(f"Dimensions: C{C.shape} = A{A.shape} x B{B.shape}")
+            logger.info(f"Data Type: {DTYPE}")
 
-            A, B = mk_matrices(M, K, N, DTYPE)
-            logger.info(f"Dimensions: A{A.shape} x B{B.shape}")
+            if not hasWarmup:
+                for mthd, _ in ALGORITHMS:
+                    warm_up(mthd, A, B)
+                logger.info("Warm up algorithms Complete.")
+                hasWarmup = True
 
-            for mthd, name in ALGORITHMS:
-                if name.startswith("Numpy"):
-                    logger.info(f"Method: {name} | Status: Running...")
-                    GroundTruth, total_s = rep_alg(mthd, name, A, B, REPETITION)
-                    logger.info(f"Done. Matrix C{GroundTruth.shape}. Duration: {total_s:.6f}s")
+            logger.info("Start benchmark...")
+            logger.info("-"*54)
 
-                elif name.startswith("Python"):
-                    if (M * K * N < 100000000):
-                        logger.info(f"Method: {name} | Status: Running...")
-                        C_python_loop, total_s = rep_alg(mthd, name, A, B, REPETITION)
-                        logger.info(f"Done. Duration: {total_s:.6f}s")
-                        logger.info(f"Result Check: {check_matmul_result(GroundTruth, C_python_loop)}")
+            alg_perfs = {name: [] for _, name in ALGORITHMS}
+            for rep in range(REPETITION):
+                random.shuffle(ALG_INDICES)
+
+                for idx in ALG_INDICES:
+                    mthd, mthdName = ALGORITHMS[idx]
+
+                    # Skip Python and CPP column-major for big matrix
+                    if epoch > 3 and (mthdName.startswith("Python") or mthdName.find("column") > -1):
+                        perf = None
                     else:
-                        logger.info(f"Method: {name} | Status: Skipped (Matrix too large).")
+                        perf = time_alg(mthd, mthdName, A, B)
 
-                elif name.startswith("CPP"):
-                    if name.find("column") > -1 and M * K * N >= 10000000000:
-                        logger.info(f"Method: {name} | Status: Skipped (Matrix too large).")
+                    alg_perfs[mthdName].append(perf)
+
+                    if perf:
+                        print(f"{mthdName} done | Wall time: {perf[1]:.6f}")
                     else:
-                        logger.info(f"Method: {name} | Status: Running...")
-                        C_cpp_xx, total_s, alg_ms = rep_alg(mthd, name, A, B, REPETITION)
-                        logger.info(f"Done. Duration: Total({total_s:.6f}s) | CPP Alg({alg_ms:.6f}ms)")
-                        logger.info(f"Result Check: {check_matmul_result(GroundTruth, C_cpp_xx)}")
+                        print(f"{mthdName} skipped")
                 
+                print("~"*54)
+
+            for name, perfs in alg_perfs.items():
+                logger.info(f"Method: {name}")
+
+                mperf = get_median(perfs, 1)
+                if mperf is None:
+                    logger.info("Status: Skipped (Matrix too large).")
+
+                else:
+                    logger.info("Status: Complete.")
+
+                    if name.startswith("Numpy") or name.startswith("Python"):
+                        logger.info(f"Duration: {mperf[1]:.6f}s")
+
+                    elif name.startswith("CPP"):
+                        logger.info(f"Duration: Total({mperf[1]:.6f}s) | CPP Alg({mperf[2]:.6f}ms)")
+
+                    logger.info(f"Result Check: {check_matmul_result(C, mperf[0])}")
+
                 logger.info("-"*54)
 
         logger.info("Benchmark Complete.")

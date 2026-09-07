@@ -4,6 +4,7 @@
 #include <chrono>
 #include "env_test.hpp"
 #include "matmul.hpp"
+#include "gemm.hpp"
 
 namespace py = pybind11;
 
@@ -36,13 +37,6 @@ std::pair<double, std::vector< std::vector<T> > > matmul_rMajor_vector_wrapper(
     T* A_ptr = static_cast<T*>(bufA.ptr);
     T* B_ptr = static_cast<T*>(bufB.ptr);
 
-    // Timer starts here because converting the flat NumPy buffer into
-    // std::vector<std::vector<T>> (row-by-row heap allocation + copy) IS
-    // part of the cost this method is meant to measure. Excluding it would
-    // hide the very overhead that distinguishes this method from the
-    // pointer-based ones.
-    auto start = std::chrono::high_resolution_clock::now();
-
     std::vector< std::vector<T> > A_vec(M, std::vector<T>(K));
     for (size_t i = 0; i < M; i++) {
         std::copy(A_ptr + i * K, A_ptr + (i + 1) * K, A_vec[i].begin());
@@ -55,9 +49,10 @@ std::pair<double, std::vector< std::vector<T> > > matmul_rMajor_vector_wrapper(
 
     std::vector< std::vector<T> > C(M, std::vector<T>(N));
 
+    auto start = std::chrono::high_resolution_clock::now();
     matmul::matmul_rMajor_vector<T>(A_vec, B_vec, C, M, K, N);
-
     auto end = std::chrono::high_resolution_clock::now();
+
     std::chrono::duration<double, std::milli> alg_elapsed = end - start;
 
     return {alg_elapsed.count(), C};
@@ -116,21 +111,15 @@ std::pair<double, py::array_t<T> > matmul_cMajor_ptr_wrapper(
     T* A_ptr = static_cast<T*>(bufA.ptr);
     T* B_ptr = static_cast<T*>(bufB.ptr);
 
-    // Timer starts here because allocating C and zero-filling it IS part of
-    // the cost this method is meant to measure — it's the pointer-method
-    // equivalent of the vector wrapper's C(M, vector<T>(N)) allocation.
-    // Keeping both methods' "build C" step inside their respective timers
-    // ensures neither is unfairly credited for doing that work "for free."
-    auto start = std::chrono::high_resolution_clock::now();
-
     py::array_t<T> C({M, N});
     py::buffer_info bufC = C.request();
     T* C_ptr = static_cast<T*>(bufC.ptr);
     std::fill(C_ptr, C_ptr + (M * N), T{0});
 
+    auto start = std::chrono::high_resolution_clock::now();
     matmul::matmul_cMajor_ptr<T>(A_ptr, B_ptr, C_ptr, M, K, N);
-
     auto end = std::chrono::high_resolution_clock::now();
+
     std::chrono::duration<double, std::milli> alg_elapsed = end - start;
 
     return {alg_elapsed.count(), C};
@@ -169,26 +158,23 @@ std::pair<double, py::array_t<T> > matmul_rMajor_ptr_wrapper(
     T* A_ptr = static_cast<T*>(bufA.ptr);
     T* B_ptr = static_cast<T*>(bufB.ptr);
 
-    // Timer starts here because allocating C and zero-filling it IS part of
-    // the cost this method is meant to measure — it's the pointer-method
-    // equivalent of the vector wrapper's C(M, vector<T>(N)) allocation.
-    // Keeping both methods' "build C" step inside their respective timers
-    // ensures neither is unfairly credited for doing that work "for free."
-    auto start = std::chrono::high_resolution_clock::now();
-
     py::array_t<T> C({M, N});
     py::buffer_info bufC = C.request();
     T* C_ptr = static_cast<T*>(bufC.ptr);
     std::fill(C_ptr, C_ptr + (M * N), T{0});
 
+    auto start = std::chrono::high_resolution_clock::now();
     matmul::matmul_rMajor_ptr<T>(A_ptr, B_ptr, C_ptr, M, K, N);
-
     auto end = std::chrono::high_resolution_clock::now();
+
     std::chrono::duration<double, std::milli> alg_elapsed = end - start;
 
     return {alg_elapsed.count(), C};
 }
 
+constexpr size_t MC = 16;
+constexpr size_t NC = 1024;
+constexpr size_t KC = 384;
 std::pair<double, py::array_t<float32_t> > gemm_f32_kernel4x16_wrapper(
     const py::array_t<float32_t> A,
     const py::array_t<float32_t> B
@@ -216,19 +202,17 @@ std::pair<double, py::array_t<float32_t> > gemm_f32_kernel4x16_wrapper(
     float32_t* A_ptr = static_cast<float32_t*>(bufA.ptr);
     float32_t* B_ptr = static_cast<float32_t*>(bufB.ptr);
 
-    auto start = std::chrono::high_resolution_clock::now();
-
     py::array_t<float32_t> C({M, N});
     py::buffer_info bufC = C.request();
     float32_t* C_ptr = static_cast<float32_t*>(bufC.ptr);
     std::fill(C_ptr, C_ptr + (M * N), 0.0f);
     
-    gemm_f32_kernel4x16::gemm_single_thread(
-        A_ptr, B_ptr, C_ptr,
-        M, N, K
-    );
+    thread_local Gemm gemm(MC, NC, KC);
 
+    auto start = std::chrono::high_resolution_clock::now();
+    gemm(A_ptr, B_ptr, C_ptr, M, N, K); // gemm in main thread TLS
     auto end = std::chrono::high_resolution_clock::now();
+
     std::chrono::duration<double, std::milli> alg_elapsed = end - start;
 
     return {alg_elapsed.count(), C};

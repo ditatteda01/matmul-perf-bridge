@@ -8,7 +8,7 @@ METHODS = [
     ("CPP row-major vector", "cpp_rMajor_vector"),
     ("CPP column-major pointer", "cpp_cMajor_ptr"),
     ("CPP row-major pointer", "cpp_rMajor_ptr"),
-    # TODO: Add CPP OPTM
+    ("CPP gemm pointer", "cpp_gemm_ptr")
 ]
 
 def parse_metrics_log(log_path):
@@ -17,7 +17,7 @@ def parse_metrics_log(log_path):
     Returns:
         Tuple of lists: (epochs, dims, records)
         - epochs: List of epoch numbers.
-        - dims: List of (p, q, r) tuples, one per epoch, in order.
+        - dims: List of (M, N, K) tuples, one per epoch, in order.
         - records: List of metric dicts, one per epoch, shaped like:
             {
                 "py_numpy" : <float seconds>,
@@ -25,7 +25,7 @@ def parse_metrics_log(log_path):
                 "cpp_rMajor_vector" : {"total_s": <float>, "alg_ms": <float>},
                 "cpp_cMajor_ptr" : {"total_s": <float>, "alg_ms": <float>},
                 "cpp_rMajor_ptr" : {"total_s": <float>, "alg_ms": <float>},
-                ...
+                "cpp_gemm_ptr"   : {"total_s": <float>, "alg_ms": <float>}
             }
 
     """
@@ -34,10 +34,13 @@ def parse_metrics_log(log_path):
 
     def parse_cpp(input_text, search_name):
         m = re.search(
-            rf"{search_name}.*?Total\(([\d.]+)s\)\s*\|\s*CPP Alg\(([\d.]+)ms\)",
+            rf"{search_name}(?:(?!Method).)*?Total\(([\d.]+)s\)\s*\|\s*CPP Alg\(([\d.]+)ms\)",
             input_text, re.DOTALL
         )
-        return {"total_s": float(m.group(1)), "alg_ms": float(m.group(2))}
+        if m:
+            return {"total_s": float(m.group(1)), "alg_ms": float(m.group(2))}
+        else:
+            return None
 
     # epoch_blocks alternates: [epoch_num, block_text, epoch_num, block_text, ...]
     epoch_blocks = re.split(r"={10}\s*Epoch\s+(\d+)\s*={10}", text)[1:]
@@ -53,11 +56,11 @@ def parse_metrics_log(log_path):
         block_text = epoch_blocks[i + 1]
 
         dim_match = re.search(
-            r"Dimensions:\s*A\((\d+),\s*(\d+)\)\s*x\s*B\((\d+),\s*(\d+)\)",
+            r"Dimensions:\s*C\((\d+),\s*(\d+)\)\s*=\s*A\((\d+),\s*(\d+)\)\s*x\s*B\((\d+),\s*(\d+)\)",
             block_text, re.DOTALL
         )
-        p, q, _, r = map(int, dim_match.groups())
-        dims.append((p, q, r))
+        m, n, _m, k, _k, _n = map(int, dim_match.groups())
+        dims.append((m, n, k))
 
         record = {}
 
@@ -77,7 +80,7 @@ def parse_metrics_log(log_path):
             record["py_loop"] = float(pyLoop_match.group(1))
         else:
             record["py_loop"] = None
-        
+
         # cpp core
         for name, key in METHODS[2:]:
             record[key] = parse_cpp(block_text, name)
@@ -90,8 +93,7 @@ def parse_metrics_log(log_path):
 
 if __name__ == "__main__":
     try:
-        log_path = sys.argv[1] if len(sys.argv) > 1 else Path("docs", "metrics.log")
-        md_path = sys.argv[2] if len(sys.argv) > 2 else Path("docs", "benchmark.md")
+        log_path = sys.argv[1] if len(sys.argv) > 1 else Path("log", "metrics.log")
 
         for e, d, r in zip(*parse_metrics_log(log_path)):
             print(e, d, r)

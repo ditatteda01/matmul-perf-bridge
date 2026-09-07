@@ -25,11 +25,15 @@ endif()
 pybind11_add_module(matmul_cpp 
     src/bindings.cpp
     src/matmul.cpp
+    src/gemm.cpp
+)
+
+target_include_directories(matmul_cpp
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
 )
 
 target_compile_options(matmul_cpp
     PRIVATE
         -O3
 )
-
-install(TARGETS matmul_cpp DESTINATION .)
