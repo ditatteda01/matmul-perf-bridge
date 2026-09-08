@@ -49,27 +49,27 @@ with dimension (M, N, K) ranges from (100, 100, 100) to (6400, 6400, 6400).
 - GEMM Cross product: Instead of using the conventional dot product of A and B to compute C, I use cross product (rank-1 updates) to reduce memory loading. For example, a (M, N, K) = (3, 2, 4) matrix multiplication, initializing C to zeros(3, 2):
 
     ```text
-    Rank-1 update:
+    Update-1:
     ⎡ c11  c12 ⎤      ⎡a11⎤
     ⎢ c21  c22 ⎥  +=  ⎢a21⎥ x [b11 b12]
     ⎣ c31  c32 ⎦      ⎣a31⎦
 
-    Rank-2 update:
+    Update-2:
     ⎡ c11  c12 ⎤      ⎡a12⎤
     ⎢ c21  c22 ⎥  +=  ⎢a22⎥ x [b21 b22]
     ⎣ c31  c32 ⎦      ⎣a32⎦
 
-    Rank-3 update:
+    Update-3:
     ⎡ c11  c12 ⎤      ⎡a13⎤
     ⎢ c21  c22 ⎥  +=  ⎢a23⎥ x [b31 b32]
     ⎣ c31  c32 ⎦      ⎣a33⎦
 
-    Rank-4 update:
+    Update-4:
     ⎡ c11  c12 ⎤      ⎡a14⎤
     ⎢ c21  c22 ⎥  +=  ⎢a24⎥ x [b41 b42]
     ⎣ c31  c32 ⎦      ⎣a34⎦
     ```
-    There are 4 updates of the C matrix in total. With the help of registers, C only needs to be loaded before rank-1 and saved back after rank-4, costing 3 x 2 x 2 total load/save for C, plus (3 + 2) x 4 for A and B. In general this is 2MN + K(M + N) total load/save, compared to (2 + 2K)MN in conventional dot-product matrix multiplication. For A and B loading part, the cross-product reduces the number of memory accesses by $\frac{2MNK}{K(M + N)} = \frac{2MN}{M + N}$ with respect to the dot product.
+    There are 4 updates of the C matrix in total. With the help of registers, C only needs to be loaded before update-1 and saved back after update-4, costing 2 x 3 x 2 total load/save for C, plus 4 x (3 + 2) for A and B. In general this is 2MN + K(M + N) total load/save, compared to (2 + 2K)MN in conventional dot-product matrix multiplication. For A and B loading part, the cross-product reduces the number of memory accesses by $\frac{2MNK}{K(M + N)} = \frac{2MN}{M + N}$ with respect to the dot product.
 
 - GEMM Packing: To take advantage of cache contiguity and the cross-product algorithm, I pack both macro-panels of A and B into row-major arrays:
 
@@ -172,7 +172,7 @@ with dimension (M, N, K) ranges from (100, 100, 100) to (6400, 6400, 6400).
 With parameters selected above, ideally
 
 - macro-panel A with size MC × KC × 4 = 24576 B, takes 18.75% of L1 (128 KB), which is relatively light load on L1 for other caches like part of macro-panel B, micro-panel C (MR×NR×4=256B) and CPU intrinsics.
-- macro-panel B with size KC × NC × 4 = 1572864 B = 1.5 MB, about 12.5% of L2 (12 MB), which also sits comfortably within it. In addition, the companion project's empirical sweep showed performance kept improving as NC increased, well past this point — see the NC note above for why 1024 rather than a larger value was chosen here.
+- macro-panel B with size KC × NC × 4 = 1572864 B = 1.5 MB, about 12.5% of L2 (12 MB), which also sits comfortably within it.
 
 ## Log and Charts
 
