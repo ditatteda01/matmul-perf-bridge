@@ -70,7 +70,7 @@ matmul-perf-bridge/
 
 ## Build
 
-In this project, I hand off all the work to CMake through `FetchContent`, so CMake takes care of the module under `build/_deps/` after configuration, which makes the project much more portable. (*Please refer to `example_pybind11` for more details on how to download the module and set dependencies manually.*)
+In this project, I hand off all the work to CMake through `FetchContent`, so CMake takes care of the module under `build/_deps/` after configuration, which makes the project much more portable. (*Please refer to [example_pybind11](https://github.com/ditatteda01/example_pybind11) for more details on how to download the module and set dependencies manually.*)
 
 Here's the `CMakeLists.txt` snippet:
 
