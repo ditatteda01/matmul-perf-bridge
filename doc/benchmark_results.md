@@ -118,7 +118,7 @@ with dimension (M, N, K) ranges from (100, 100, 100) to (6400, 6400, 6400).
   *(There's also a second cost beyond data conversion: the algorithm itself suffers so-called pointer-chasing — each row of `std::vector<std::vector<T>>` is separately allocated, so accessing elements requires following an extra pointer before reaching the data, reducing cache efficiency. As with the conversion cost, this effect is increasingly diluted by compute time as matrix size grows.)*
 
 - **Custom GEMM outperforms all other C++ implementations.**
-  Despite packing and edge-case handling overhead, the custom GEMM still wins against all the other C++ implementations, reaching roughly 80% of single-core peak (102 GFLOPs) when averaged across the full 100–6400 size sweep — small sizes carry proportionally more packing/loop overhead and pull this average down. At larger, well-blocked sizes closer to where the tuning parameters below were selected, efficiency reaches 80–87% of peak.
+  Despite packing/edge-case handling overhead, the custom GEMM still wins against all the other C++ implementations, reaching roughly 80% of single-core peak (102 GFLOPS) when averaged across the full 100–6400 size sweep — small sizes carry proportionally more packing/loop overhead and pull this average down. At larger, well-blocked sizes closer to where the tuning parameters below were selected, efficiency reaches 80–87% of peak.
 
 - **NumPy still outperforms the tuned custom GEMM.**
   NumPy runs roughly 10x faster than the custom GEMM, even though the GEMM itself reaches ~80% of single-core peak. This reflects NumPy's backend (OpenBLAS/Accelerate) using more elaborate blocking/tiling, multiple hand-tuned SIMD kernels selected per matrix size, and likely multithreading — a gap this single-threaded project doesn't close.
@@ -184,4 +184,4 @@ Full raw data [`metrics.log`](../log/metrics.log)
 
 ![C++ internal computation time vs. problem size](../png/benchmark_cpp_alg_time.png)
 
-![C++ GFLOPs vs. problem size](../png/benchmark_cpp_GFLOPs.png)
+![C++ GFLOPS vs. problem size](../png/benchmark_cpp_GFLOPS.png)

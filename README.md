@@ -35,7 +35,7 @@ matmul-perf-bridge/
 │   └── metrics.log             # Raw benchmark output
 │
 ├── png/
-│   ├── benchmark_cpp_GFLOPs.png
+│   ├── benchmark_cpp_GFLOPS.png
 │   ├── benchmark_total_time.png
 │   └── benchmark_cpp_alg_time.png
 │

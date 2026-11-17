@@ -69,7 +69,7 @@ def plot_cpp_alg_time(records, dims, save_path="benchmark_cpp_alg_time.png"):
     plt.close(fig)
     return save_path
 
-def plot_cpp_GFLOPs(records, dims, save_path="benchmark_cpp_gflops.png"):
+def plot_cpp_GFLOPS(records, dims, save_path="benchmark_cpp_gflops.png"):
     gflop = [flops(*dim) * 1e-9 for dim in dims]
     x = [m for m, n, k in dims]
 
@@ -89,8 +89,8 @@ def plot_cpp_GFLOPs(records, dims, save_path="benchmark_cpp_gflops.png"):
             ax.plot(xs, ys, marker="o", label=label)
 
     ax.set_xlabel("Problem size M=N=K")
-    ax.set_ylabel("GFLOPs")
-    ax.set_title("Matmul benchmark: C++ GFLOPs vs. problem size")
+    ax.set_ylabel("GFLOPS")
+    ax.set_title("Matmul benchmark: C++ GFLOPS vs. problem size")
     ax.legend()
     ax.grid(True, which="both", ls="--", alpha=0.4)
     fig.tight_layout()
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         _, dims, records = parse_metrics_log(log_path)
         p1 = plot_total_time(records, dims, save_path=out_dir/"benchmark_total_time.png")
         p2 = plot_cpp_alg_time(records, dims, save_path=out_dir/"benchmark_cpp_alg_time.png")
-        p3 = plot_cpp_GFLOPs(records, dims, save_path=out_dir/"benchmark_cpp_GFLOPs.png")
+        p3 = plot_cpp_GFLOPS(records, dims, save_path=out_dir/"benchmark_cpp_GFLOPS.png")
         print(f"Saved: {p1} | {p2} | {p3}")
 
     except Exception as e:
